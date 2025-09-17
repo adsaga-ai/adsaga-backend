@@ -1,0 +1,58 @@
+'use strict';
+
+/** @type {import('sequelize-cli').Migration} */
+module.exports = {
+  async up (queryInterface, Sequelize) {
+    // Create user table
+    await queryInterface.createTable('user', {
+      user_id: {
+        type: Sequelize.UUID,
+        defaultValue: Sequelize.UUIDV4,
+        primaryKey: true,
+        allowNull: false
+      },
+      organisation_id: {
+        type: Sequelize.UUID,
+        allowNull: false,
+        references: {
+          model: 'organisation',
+          key: 'organisation_id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
+      },
+      fullname: {
+        type: Sequelize.STRING(50),
+        allowNull: false
+      },
+      email: {
+        type: Sequelize.STRING(255),
+        allowNull: false,
+        unique: true
+      },
+      password: {
+        type: Sequelize.STRING(255),
+        allowNull: false
+      },
+      created_at: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.NOW
+      },
+      updated_at: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.NOW
+      }
+    });
+
+    // Add indexes for better query performance
+    await queryInterface.addIndex('user', ['organisation_id']);
+    await queryInterface.addIndex('user', ['email']);
+  },
+
+  async down (queryInterface, Sequelize) {
+    // Drop the user table
+    await queryInterface.dropTable('user');
+  }
+};

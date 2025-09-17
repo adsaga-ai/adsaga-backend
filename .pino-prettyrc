@@ -1,0 +1,7 @@
+{
+  "colorize": true,
+  "translateTime": "SYS:standard",
+  "ignore": "pid,hostname",
+  "messageFormat": "{msg}",
+  "singleLine": false
+}
