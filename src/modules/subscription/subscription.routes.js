@@ -3,7 +3,7 @@ const subscriptionController = require('./subscription.controller');
 const subscriptionValidation = require('./subscription.validation');
 const validate = require('../../middleware/validation-handler');
 
-const router = express.Router('/subscriptions');
+const router = express.Router();
 
 router.get('/', subscriptionController.getAllSubscriptions);
 

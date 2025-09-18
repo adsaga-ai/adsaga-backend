@@ -3,6 +3,7 @@ dotenv.config();
 
 const express = require('express');
 const pino = require('pino');
+const cookieParser = require('cookie-parser');
 const config = require('./config');
 const modules = require('./modules');
 
@@ -14,6 +15,7 @@ const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Custom logger middleware that provides req.log functionality
 app.use((req, res, next) => {

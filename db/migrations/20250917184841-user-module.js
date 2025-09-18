@@ -13,7 +13,7 @@ module.exports = {
       },
       organisation_id: {
         type: Sequelize.UUID,
-        allowNull: false,
+        allowNull: true,
         references: {
           model: 'organisation',
           key: 'organisation_id'

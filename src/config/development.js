@@ -1,6 +1,11 @@
 module.exports = {
     port: 8080,
     logLevel: 'info',
+    jwt: {
+        secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+        expiresIn: '24h',
+        cookieName: 'auth_token'
+    },
     postgresConfig: {
         host: process.env.POSTGRES_HOST,
         port: process.env.POSTGRES_PORT,
