@@ -6,6 +6,7 @@ const pino = require('pino');
 const cookieParser = require('cookie-parser');
 const config = require('./config');
 const modules = require('./modules');
+const cors = require('cors');
 
 const logger = pino({
   level: config.logLevel || 'info'
@@ -16,6 +17,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(cors(config.cors));
 
 // Custom logger middleware that provides req.log functionality
 app.use((req, res, next) => {

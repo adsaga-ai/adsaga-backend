@@ -67,8 +67,8 @@ class UserController {
       // Set token in cookie
       res.cookie(config.jwt.cookieName, token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        secure: false,
+        sameSite: 'lax',
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
       });
       
