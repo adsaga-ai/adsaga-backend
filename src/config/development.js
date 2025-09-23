@@ -23,5 +23,18 @@ module.exports = {
     cors: {
         origin: process.env.CORS_ORIGIN,
         credentials: true
+    },
+    email: {
+        host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+        port: process.env.EMAIL_PORT || 587,
+        secure: process.env.EMAIL_SECURE === 'true' || false,
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        }
+    },
+    passwordReset: {
+        tokenExpiry: process.env.PASSWORD_RESET_TOKEN_EXPIRY || '1h', // 1 hour
+        frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000'
     }
 }

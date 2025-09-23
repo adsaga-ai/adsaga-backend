@@ -89,6 +89,32 @@ const userValidation = {
         'any.required': 'User ID is required'
       })
     })
+  },
+
+  forgotPassword: {
+    body: Joi.object({
+      email: Joi.string().email().required().messages({
+        'string.email': 'Please provide a valid email address',
+        'any.required': 'Email is required'
+      })
+    })
+  },
+
+  resetPassword: {
+    body: Joi.object({
+      token: Joi.string().required().messages({
+        'any.required': 'Reset token is required'
+      }),
+      password: Joi.string().min(6).max(255).required().messages({
+        'string.min': 'Password must be at least 6 characters long',
+        'string.max': 'Password must not exceed 255 characters',
+        'any.required': 'Password is required'
+      }),
+      confirmPassword: Joi.string().valid(Joi.ref('password')).required().messages({
+        'any.only': 'Confirm password must match password',
+        'any.required': 'Confirm password is required'
+      })
+    })
   }
 };
 

@@ -185,6 +185,26 @@ class UserRepository {
   async verifyPassword(plainPassword, hashedPassword) {
     return await bcrypt.compare(plainPassword, hashedPassword);
   }
+
+  async hashPassword(password) {
+    return await bcrypt.hash(password, 10);
+  }
+
+  async updatePassword(userId, hashedPassword) {
+    try {
+      const query = `
+        UPDATE "user" 
+        SET password = $1, updated_at = NOW()
+        WHERE user_id = $2
+        RETURNING user_id, email, fullname
+      `;
+      
+      const result = await pool.query(query, [hashedPassword, userId]);
+      return result.rows[0] || null;
+    } catch (error) {
+      throw new Error(`Failed to update password: ${error.message}`);
+    }
+  }
 }
 
 module.exports = new UserRepository();

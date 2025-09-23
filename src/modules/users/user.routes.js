@@ -25,6 +25,20 @@ router.post(
   userController.logout
 );
 
+// Forgot password
+router.post(
+  '/forgot-password',
+  validate(userValidation.forgotPassword),
+  userController.forgotPassword
+);
+
+// Reset password
+router.post(
+  '/reset-password',
+  validate(userValidation.resetPassword),
+  userController.resetPassword
+);
+
 // Get all users
 router.get(
   '/',
