@@ -1,44 +1,15 @@
 const userRepository = require('./user.data');
 const passwordResetTokenRepository = require('./password-reset-token.data');
+const userEmailVerificationRepository = require('./user-email-verification.data');
 const { sendEmail } = require('../../utils/email-service');
 const { passwordResetEmail } = require('../../templates');
+const otpVerificationEmail = require('../../templates/otp-verification-email');
 const responseHandler = require('../../utils/response-handler');
 const jwt = require('jsonwebtoken');
 const config = require('../../config/development');
 const crypto = require('crypto');
 
 class UserController {
-  async register(req, res, next) {
-    try {
-      const { organisation_id, fullname, email, password } = req.body;
-      
-      // Check if user already exists
-      const existingUser = await userRepository.findByEmail(email);
-      if (existingUser) {
-        return responseHandler.error(res, 'User with this email already exists', 409);
-      }
-      
-      // Generate UUID for user
-      const userId = crypto.randomUUID();
-      
-      // Create user (organisation_id can be null if not provided)
-      const newUser = await userRepository.create({
-        userId,
-        organisationId: organisation_id || null,
-        fullname,
-        email,
-        password
-      });
-      
-      // Remove password from response
-      delete newUser.password;
-      
-      return responseHandler.success(res, newUser, 'User registered successfully', 201);
-    } catch (error) {
-      req.log.error(error, 'Failed to register user');
-      return responseHandler.error(res, error.message, 500);
-    }
-  }
 
   async login(req, res, next) {
     try {
@@ -273,6 +244,217 @@ class UserController {
     } catch (error) {
       req.log.error(error, 'Failed to reset password');
       return responseHandler.error(res, 'An error occurred while resetting your password. Please try again later.', 500);
+    }
+  }
+
+  // OTP-based registration flow methods
+  async initiateRegistration(req, res, next) {
+    try {
+      const { email } = req.body;
+      
+      // Check if user already exists
+      const existingUser = await userRepository.findByEmail(email);
+      if (existingUser) {
+        return responseHandler.error(res, 'User with this email already exists', 409);
+      }
+      
+      // Clean up expired records
+      await userEmailVerificationRepository.deleteExpiredRecords();
+      
+      // Check for active verification attempts (rate limiting)
+      const activeCount = await userEmailVerificationRepository.getActiveVerificationCount(email);
+      if (activeCount >= 3) {
+        return responseHandler.error(res, 'Too many verification attempts. Please wait before requesting another OTP.', 429);
+      }
+      
+      // Generate 6-digit OTP
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Set expiration time (10 minutes from now)
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      
+      // Check if verification record exists for this email
+      let verificationRecord = await userEmailVerificationRepository.findByEmail(email);
+      
+      if (verificationRecord) {
+        // Update existing record with new OTP
+        verificationRecord = await userEmailVerificationRepository.updateOtpCode(
+          verificationRecord.id, 
+          otpCode, 
+          expiresAt
+        );
+      } else {
+        // Create new verification record
+        verificationRecord = await userEmailVerificationRepository.createVerificationRecord(
+          email, 
+          otpCode, 
+          expiresAt
+        );
+      }
+      
+      // Send OTP email
+      await sendEmail({
+        to: email,
+        subject: 'Email Verification - AdSaga',
+        html: otpVerificationEmail(otpCode, false)
+      });
+      
+      return responseHandler.success(res, {
+        message: 'OTP sent successfully',
+        expires_in: 600 // 10 minutes in seconds
+      }, 'Verification code sent to your email');
+    } catch (error) {
+      req.log.error(error, 'Failed to initiate registration');
+      return responseHandler.error(res, 'An error occurred while sending verification code. Please try again later.', 500);
+    }
+  }
+
+  async verifyOtp(req, res, next) {
+    try {
+      const { email, otp_code } = req.body;
+      
+      // Find verification record
+      const verificationRecord = await userEmailVerificationRepository.findByEmail(email);
+      if (!verificationRecord) {
+        return responseHandler.error(res, 'No verification record found for this email', 404);
+      }
+      
+      // Check if already verified
+      if (verificationRecord.verified) {
+        return responseHandler.error(res, 'Email already verified', 400);
+      }
+      
+      // Check if expired
+      if (new Date() > new Date(verificationRecord.expires_at)) {
+        return responseHandler.error(res, 'Verification code has expired. Please request a new one.', 400);
+      }
+      
+      // Check attempts limit
+      if (verificationRecord.attempts >= 3) {
+        return responseHandler.error(res, 'Too many failed attempts. Please request a new verification code.', 429);
+      }
+      
+      // Verify OTP
+      const verifiedRecord = await userEmailVerificationRepository.verifyOtp(verificationRecord.id, otp_code);
+      if (!verifiedRecord) {
+        // Increment attempts
+        await userEmailVerificationRepository.incrementAttempts(verificationRecord.id);
+        return responseHandler.error(res, 'Invalid verification code', 400);
+      }
+      
+      return responseHandler.success(res, {
+        message: 'Email verified successfully',
+        verified: true
+      }, 'Email verification successful');
+    } catch (error) {
+      req.log.error(error, 'Failed to verify OTP');
+      return responseHandler.error(res, 'An error occurred while verifying the code. Please try again later.', 500);
+    }
+  }
+
+  async completeRegistration(req, res, next) {
+    try {
+      const { email, otp_code, fullname, password, organisation_id } = req.body;
+      
+      // Find verification record
+      const verificationRecord = await userEmailVerificationRepository.findByEmail(email);
+      if (!verificationRecord) {
+        return responseHandler.error(res, 'No verification record found for this email', 404);
+      }
+      
+      // Check if email is verified
+      if (!verificationRecord.verified) {
+        return responseHandler.error(res, 'Email must be verified before completing registration', 400);
+      }
+      
+      // Double-check OTP for security
+      if (verificationRecord.otp_code !== otp_code) {
+        return responseHandler.error(res, 'Invalid verification code', 400);
+      }
+      
+      // Check if user already created
+      if (verificationRecord.is_user_created) {
+        return responseHandler.error(res, 'User already registered with this email', 409);
+      }
+      
+      // Generate UUID for user
+      const userId = crypto.randomUUID();
+      
+      // Create user
+      const newUser = await userRepository.create({
+        userId,
+        organisationId: organisation_id || null,
+        fullname,
+        email,
+        password
+      });
+      
+      // Mark user as created in verification record
+      await userEmailVerificationRepository.markUserCreated(verificationRecord.id);
+      
+      // Remove password from response
+      delete newUser.password;
+      
+      return responseHandler.success(res, newUser, 'User registered successfully', 201);
+    } catch (error) {
+      req.log.error(error, 'Failed to complete registration');
+      return responseHandler.error(res, 'An error occurred while completing registration. Please try again later.', 500);
+    }
+  }
+
+  async resendOtp(req, res, next) {
+    try {
+      const { email } = req.body;
+      
+      // Check if user already exists
+      const existingUser = await userRepository.findByEmail(email);
+      if (existingUser) {
+        return responseHandler.error(res, 'User with this email already exists', 409);
+      }
+      
+      // Find existing verification record
+      const verificationRecord = await userEmailVerificationRepository.findByEmail(email);
+      if (!verificationRecord) {
+        return responseHandler.error(res, 'No verification record found. Please initiate registration first.', 404);
+      }
+      
+      // Check if already verified
+      if (verificationRecord.verified) {
+        return responseHandler.error(res, 'Email already verified', 400);
+      }
+      
+      // Check if user already created
+      if (verificationRecord.is_user_created) {
+        return responseHandler.error(res, 'User already registered with this email', 409);
+      }
+      
+      // Generate new 6-digit OTP
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Set new expiration time (10 minutes from now)
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      
+      // Update OTP code and reset attempts
+      const updatedRecord = await userEmailVerificationRepository.updateOtpCode(
+        verificationRecord.id, 
+        otpCode, 
+        expiresAt
+      );
+      
+      // Send new OTP email
+      await sendEmail({
+        to: email,
+        subject: 'Email Verification - AdSaga (Resend)',
+        html: otpVerificationEmail(otpCode, true)
+      });
+      
+      return responseHandler.success(res, {
+        message: 'OTP resent successfully',
+        expires_in: 600 // 10 minutes in seconds
+      }, 'New verification code sent to your email');
+    } catch (error) {
+      req.log.error(error, 'Failed to resend OTP');
+      return responseHandler.error(res, 'An error occurred while resending verification code. Please try again later.', 500);
     }
   }
 }

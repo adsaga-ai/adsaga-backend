@@ -1,28 +1,6 @@
 const Joi = require('joi');
 
 const userValidation = {
-  register: {
-    body: Joi.object({
-      organisation_id: Joi.string().uuid().optional().messages({
-        'string.guid': 'Organisation ID must be a valid UUID'
-      }),
-      fullname: Joi.string().min(2).max(50).required().messages({
-        'string.min': 'Full name must be at least 2 characters long',
-        'string.max': 'Full name must not exceed 50 characters',
-        'any.required': 'Full name is required'
-      }),
-      email: Joi.string().email().max(255).required().messages({
-        'string.email': 'Please provide a valid email address',
-        'string.max': 'Email must not exceed 255 characters',
-        'any.required': 'Email is required'
-      }),
-      password: Joi.string().min(6).max(255).required().messages({
-        'string.min': 'Password must be at least 6 characters long',
-        'string.max': 'Password must not exceed 255 characters',
-        'any.required': 'Password is required'
-      })
-    })
-  },
 
   login: {
     body: Joi.object({
@@ -113,6 +91,67 @@ const userValidation = {
       confirmPassword: Joi.string().valid(Joi.ref('password')).required().messages({
         'any.only': 'Confirm password must match password',
         'any.required': 'Confirm password is required'
+      })
+    })
+  },
+
+  // OTP-based registration flow validations
+  initiateRegistration: {
+    body: Joi.object({
+      email: Joi.string().email().max(255).required().messages({
+        'string.email': 'Please provide a valid email address',
+        'string.max': 'Email must not exceed 255 characters',
+        'any.required': 'Email is required'
+      })
+    })
+  },
+
+  verifyOtp: {
+    body: Joi.object({
+      email: Joi.string().email().required().messages({
+        'string.email': 'Please provide a valid email address',
+        'any.required': 'Email is required'
+      }),
+      otp_code: Joi.string().length(6).pattern(/^\d+$/).required().messages({
+        'string.length': 'OTP code must be exactly 6 digits',
+        'string.pattern.base': 'OTP code must contain only numbers',
+        'any.required': 'OTP code is required'
+      })
+    })
+  },
+
+  completeRegistration: {
+    body: Joi.object({
+      email: Joi.string().email().required().messages({
+        'string.email': 'Please provide a valid email address',
+        'any.required': 'Email is required'
+      }),
+      otp_code: Joi.string().length(6).pattern(/^\d+$/).required().messages({
+        'string.length': 'OTP code must be exactly 6 digits',
+        'string.pattern.base': 'OTP code must contain only numbers',
+        'any.required': 'OTP code is required'
+      }),
+      fullname: Joi.string().min(2).max(50).required().messages({
+        'string.min': 'Full name must be at least 2 characters long',
+        'string.max': 'Full name must not exceed 50 characters',
+        'any.required': 'Full name is required'
+      }),
+      password: Joi.string().min(6).max(255).required().messages({
+        'string.min': 'Password must be at least 6 characters long',
+        'string.max': 'Password must not exceed 255 characters',
+        'any.required': 'Password is required'
+      }),
+      organisation_id: Joi.string().uuid().optional().messages({
+        'string.guid': 'Organisation ID must be a valid UUID'
+      })
+    })
+  },
+
+  resendOtp: {
+    body: Joi.object({
+      email: Joi.string().email().required().messages({
+        'string.email': 'Please provide a valid email address',
+        'any.required': 'Email is required'
       })
     })
   }

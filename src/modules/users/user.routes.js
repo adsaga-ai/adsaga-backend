@@ -5,12 +5,35 @@ const validate = require('../../middleware/validation-handler');
 
 const router = express.Router();
 
-// Register new user
+// OTP-based registration flow
+// Step 1: Initiate registration (send OTP)
 router.post(
-  '/register',
-  validate(userValidation.register),
-  userController.register
+  '/register/initiate',
+  validate(userValidation.initiateRegistration),
+  userController.initiateRegistration
 );
+
+// Step 2: Verify OTP
+router.post(
+  '/register/verify-otp',
+  validate(userValidation.verifyOtp),
+  userController.verifyOtp
+);
+
+// Step 3: Complete registration (set password)
+router.post(
+  '/register/complete',
+  validate(userValidation.completeRegistration),
+  userController.completeRegistration
+);
+
+// Resend OTP
+router.post(
+  '/register/resend-otp',
+  validate(userValidation.resendOtp),
+  userController.resendOtp
+);
+
 
 // Login user
 router.post(
