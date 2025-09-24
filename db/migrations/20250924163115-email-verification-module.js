@@ -3,11 +3,14 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
+    // Enable UUID extension if not already enabled
+    await queryInterface.sequelize.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
+    
     // Create user_email_verification table
     await queryInterface.createTable('user_email_verification', {
       id: {
         type: Sequelize.UUID,
-        defaultValue: Sequelize.UUIDV4,
+        defaultValue: Sequelize.literal('uuid_generate_v4()'),
         primaryKey: true,
         allowNull: false
       },

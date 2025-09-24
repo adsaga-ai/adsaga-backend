@@ -25,12 +25,16 @@ module.exports = {
         credentials: true
     },
     email: {
-        host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+        host: process.env.EMAIL_HOST || 'smtp.sendgrid.net',
         port: process.env.EMAIL_PORT || 587,
         secure: process.env.EMAIL_SECURE === 'true' || false,
         auth: {
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_PASS
+        },
+        sendgrid: {
+            apiKey: process.env.SENDGRID_API_KEY,
+            fromEmail: process.env.SENDGRID_FROM_EMAIL || process.env.EMAIL_USER
         }
     },
     passwordReset: {

@@ -2,10 +2,13 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
+    // Enable UUID extension if not already enabled
+    await queryInterface.sequelize.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
+    
     await queryInterface.createTable('workflow_config', {
       workflow_config_id: {
         type: Sequelize.UUID,
-        defaultValue: Sequelize.UUIDV4,
+        defaultValue: Sequelize.literal('uuid_generate_v4()'),
         primaryKey: true,
         allowNull: false
       },

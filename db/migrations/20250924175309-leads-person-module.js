@@ -1,40 +1,44 @@
 'use strict';
 
+/** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
     // Enable UUID extension if not already enabled
     await queryInterface.sequelize.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
     
-    await queryInterface.createTable('password_reset_tokens', {
-      id: {
+    await queryInterface.createTable('lead_person', {
+      lead_person_id: {
         type: Sequelize.UUID,
         defaultValue: Sequelize.literal('uuid_generate_v4()'),
         primaryKey: true,
         allowNull: false
       },
-      user_id: {
+      lead_id: {
         type: Sequelize.UUID,
         allowNull: false,
         references: {
-          model: 'user',
-          key: 'user_id'
+          model: 'leads',
+          key: 'lead_id'
         },
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE'
       },
-      token: {
+      person_name: {
+        type: Sequelize.STRING(100),
+        allowNull: false
+      },
+      email: {
         type: Sequelize.STRING(255),
-        allowNull: false,
-        unique: true
+        allowNull: true
       },
-      expires_at: {
-        type: Sequelize.DATE,
-        allowNull: false
+      phone_number: {
+        type: Sequelize.STRING(20),
+        allowNull: true
       },
-      used: {
+      is_verified: {
         type: Sequelize.BOOLEAN,
-        defaultValue: false,
-        allowNull: false
+        allowNull: false,
+        defaultValue: false
       },
       created_at: {
         type: Sequelize.DATE,
@@ -48,13 +52,14 @@ module.exports = {
       }
     });
 
-    // Add index for better performance
-    await queryInterface.addIndex('password_reset_tokens', ['user_id']);
-    await queryInterface.addIndex('password_reset_tokens', ['token']);
-    await queryInterface.addIndex('password_reset_tokens', ['expires_at']);
+    // Add indexes for better performance
+    await queryInterface.addIndex('lead_person', ['lead_id']);
+    await queryInterface.addIndex('lead_person', ['email']);
+    await queryInterface.addIndex('lead_person', ['is_verified']);
+    await queryInterface.addIndex('lead_person', ['created_at']);
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('password_reset_tokens');
+    await queryInterface.dropTable('lead_person');
   }
 };

@@ -1,7 +1,7 @@
 const userRepository = require('./user.data');
 const passwordResetTokenRepository = require('./password-reset-token.data');
 const userEmailVerificationRepository = require('./user-email-verification.data');
-const { sendEmail } = require('../../utils/email-service');
+const { sendEmail } = require('../../utils/email-service-sendgrid');
 const { passwordResetEmail } = require('../../templates');
 const otpVerificationEmail = require('../../templates/otp-verification-email');
 const responseHandler = require('../../utils/response-handler');
