@@ -16,7 +16,7 @@ class UserController {
       const { email, password } = req.body;
       
       // Find user by email
-      const user = await userRepository.findByEmail(email);
+      const user = await userRepository.findByEmailWithoutOrgFilter(email);
       if (!user) {
         return responseHandler.error(res, 'Invalid email or password', 401);
       }
@@ -62,7 +62,7 @@ class UserController {
   async getUserById(req, res, next) {
     try {
       const { user_id } = req.params;
-      const user = await userRepository.findById(user_id);
+      const user = await userRepository.findById(user_id, req.user.organisation_id);
       
       if (!user) {
         return responseHandler.error(res, 'User not found', 404);
@@ -78,7 +78,7 @@ class UserController {
   async getUserByEmail(req, res, next) {
     try {
       const { email } = req.params;
-      const user = await userRepository.findByEmail(email);
+      const user = await userRepository.findByEmail(email, req.user.organisation_id);
       
       if (!user) {
         return responseHandler.error(res, 'User not found', 404);
@@ -100,21 +100,21 @@ class UserController {
       const updateData = req.body;
       
       // Check if user exists
-      const existingUser = await userRepository.findById(user_id);
+      const existingUser = await userRepository.findById(user_id, req.user.organisation_id);
       if (!existingUser) {
         return responseHandler.error(res, 'User not found', 404);
       }
       
       // Check if email is being updated and if it already exists
       if (updateData.email && updateData.email !== existingUser.email) {
-        const userWithEmail = await userRepository.findByEmail(updateData.email);
+        const userWithEmail = await userRepository.findByEmail(updateData.email, req.user.organisation_id);
         if (userWithEmail) {
           return responseHandler.error(res, 'User with this email already exists', 409);
         }
       }
       
       // Update user
-      const updatedUser = await userRepository.update(user_id, updateData);
+      const updatedUser = await userRepository.update(user_id, updateData, req.user.organisation_id);
       
       return responseHandler.success(res, updatedUser, 'User updated successfully');
     } catch (error) {
@@ -128,12 +128,12 @@ class UserController {
       const { user_id } = req.params;
       
       // Check if user exists
-      const existingUser = await userRepository.findById(user_id);
+      const existingUser = await userRepository.findById(user_id, req.user.organisation_id);
       if (!existingUser) {
         return responseHandler.error(res, 'User not found', 404);
       }
       
-      const deletedUser = await userRepository.delete(user_id);
+      const deletedUser = await userRepository.delete(user_id, req.user.organisation_id);
       
       return responseHandler.success(res, deletedUser, 'User deleted successfully');
     } catch (error) {
@@ -144,7 +144,7 @@ class UserController {
 
   async getAllUsers(req, res, next) {
     try {
-      const users = await userRepository.findAll();
+      const users = await userRepository.findAll(req.user.organisation_id);
       return responseHandler.success(res, users, 'Users retrieved successfully');
     } catch (error) {
       req.log.error(error, 'Failed to retrieve users');
@@ -169,7 +169,7 @@ class UserController {
       const { email } = req.body;
       
       // Check if user exists
-      const user = await userRepository.findByEmail(email);
+      const user = await userRepository.findByEmailWithoutOrgFilter(email);
       if (!user) {
         // For security, don't reveal if email exists or not
         return responseHandler.success(res, null, 'If an account with that email exists, we have sent a password reset link.');
@@ -230,9 +230,15 @@ class UserController {
         return responseHandler.error(res, 'Reset token has already been used. Please request a new password reset.', 400);
       }
       
+      // Get user to retrieve organisation_id
+      const user = await userRepository.findByIdWithoutOrgFilter(tokenData.user_id);
+      if (!user) {
+        return responseHandler.error(res, 'User not found', 404);
+      }
+      
       // Update user password
       const hashedPassword = await userRepository.hashPassword(password);
-      await userRepository.updatePassword(tokenData.user_id, hashedPassword);
+      await userRepository.updatePassword(tokenData.user_id, hashedPassword, user.organisation_id);
       
       // Mark token as used
       await passwordResetTokenRepository.markTokenAsUsed(tokenData.id);
@@ -253,7 +259,7 @@ class UserController {
       const { email } = req.body;
       
       // Check if user already exists
-      const existingUser = await userRepository.findByEmail(email);
+      const existingUser = await userRepository.findByEmailWithoutOrgFilter(email);
       if (existingUser) {
         return responseHandler.error(res, 'User with this email already exists', 409);
       }
@@ -421,7 +427,7 @@ class UserController {
       const { email } = req.body;
       
       // Check if user already exists
-      const existingUser = await userRepository.findByEmail(email);
+      const existingUser = await userRepository.findByEmailWithoutOrgFilter(email);
       if (existingUser) {
         return responseHandler.error(res, 'User with this email already exists', 409);
       }

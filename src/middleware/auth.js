@@ -18,7 +18,7 @@ const auth = async (req, res, next) => {
     const decoded = jwt.verify(token, config.jwt.secret);
     
     // Get user from database to ensure user still exists
-    const user = await userRepository.findById(decoded.user_id);
+    const user = await userRepository.findByIdWithoutOrgFilter(decoded.user_id);
     if (!user) {
       return res.status(401).json({
         success: false,

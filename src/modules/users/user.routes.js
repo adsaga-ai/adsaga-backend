@@ -2,6 +2,7 @@ const express = require('express');
 const userController = require('./user.controller');
 const userValidation = require('./user.validation');
 const validate = require('../../middleware/validation-handler');
+const auth = require('../../middleware/auth');
 
 const router = express.Router();
 
@@ -62,36 +63,41 @@ router.post(
   userController.resetPassword
 );
 
-// Get all users
+// Get all users (protected route)
 router.get(
   '/',
+  auth,
   userController.getAllUsers
 );
 
-// Get user by ID
+// Get user by ID (protected route)
 router.get(
   '/:user_id',
+  auth,
   validate(userValidation.getById),
   userController.getUserById
 );
 
-// Get user by email
+// Get user by email (protected route)
 router.get(
   '/email/:email',
+  auth,
   validate(userValidation.getByEmail),
   userController.getUserByEmail
 );
 
-// Update user
+// Update user (protected route)
 router.put(
   '/:user_id',
+  auth,
   validate(userValidation.update),
   userController.updateUser
 );
 
-// Delete user
+// Delete user (protected route)
 router.delete(
   '/:user_id',
+  auth,
   validate(userValidation.delete),
   userController.deleteUser
 );

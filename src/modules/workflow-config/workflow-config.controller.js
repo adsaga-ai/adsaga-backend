@@ -13,7 +13,7 @@ class WorkflowConfigController {
         return responseHandler.error(res, 'User must be associated with an organisation to view workflow configs', 400);
       }
       
-      const workflowConfigs = await workflowConfigRepository.findByOrganisationId(organisationId);
+      const workflowConfigs = await workflowConfigRepository.findAll(organisationId);
       return responseHandler.success(res, workflowConfigs, 'Workflow configs retrieved successfully');
     } catch (error) {
       req.log.error(error, 'Failed to retrieve workflow configs');
@@ -31,15 +31,10 @@ class WorkflowConfigController {
         return responseHandler.error(res, 'User must be associated with an organisation to view workflow configs', 400);
       }
       
-      const workflowConfig = await workflowConfigRepository.findById(workflow_config_id);
+      const workflowConfig = await workflowConfigRepository.findById(workflow_config_id, organisationId);
       
       if (!workflowConfig) {
         return responseHandler.error(res, 'Workflow config not found', 404);
-      }
-      
-      // Check if the workflow config belongs to the user's organisation
-      if (workflowConfig.organisation_id !== organisationId) {
-        return responseHandler.error(res, 'Access denied: Workflow config does not belong to your organisation', 403);
       }
       
       return responseHandler.success(res, workflowConfig, 'Workflow config retrieved successfully');
@@ -71,7 +66,14 @@ class WorkflowConfigController {
   async getWorkflowConfigsByUser(req, res, next) {
     try {
       const userId = req.user.user_id;
-      const workflowConfigs = await workflowConfigRepository.findByCreatedBy(userId);
+      const organisationId = req.user.organisation_id;
+      
+      // Check if user has an organisation
+      if (!organisationId) {
+        return responseHandler.error(res, 'User must be associated with an organisation to view workflow configs', 400);
+      }
+      
+      const workflowConfigs = await workflowConfigRepository.findByCreatedBy(userId, organisationId);
       
       return responseHandler.success(res, workflowConfigs, 'Workflow configs retrieved successfully by user');
     } catch (error) {
@@ -132,8 +134,15 @@ class WorkflowConfigController {
         leads_count 
       } = req.body;
       
+      const organisationId = req.user.organisation_id;
+      
+      // Check if user has an organisation
+      if (!organisationId) {
+        return responseHandler.error(res, 'User must be associated with an organisation to update workflow configs', 400);
+      }
+      
       // Check if workflow config exists
-      const existingWorkflowConfig = await workflowConfigRepository.findById(workflow_config_id);
+      const existingWorkflowConfig = await workflowConfigRepository.findById(workflow_config_id, organisationId);
       if (!existingWorkflowConfig) {
         return responseHandler.error(res, 'Workflow config not found', 404);
       }
@@ -145,7 +154,7 @@ class WorkflowConfigController {
         designations,
         runsAt: runs_at,
         leadsCount: leads_count
-      });
+      }, organisationId);
       
       return responseHandler.success(res, updatedWorkflowConfig, 'Workflow config updated successfully');
     } catch (error) {
@@ -157,14 +166,20 @@ class WorkflowConfigController {
   async deleteWorkflowConfig(req, res, next) {
     try {
       const { workflow_config_id } = req.params;
+      const organisationId = req.user.organisation_id;
+      
+      // Check if user has an organisation
+      if (!organisationId) {
+        return responseHandler.error(res, 'User must be associated with an organisation to delete workflow configs', 400);
+      }
       
       // Check if workflow config exists
-      const existingWorkflowConfig = await workflowConfigRepository.findById(workflow_config_id);
+      const existingWorkflowConfig = await workflowConfigRepository.findById(workflow_config_id, organisationId);
       if (!existingWorkflowConfig) {
         return responseHandler.error(res, 'Workflow config not found', 404);
       }
       
-      const deletedWorkflowConfig = await workflowConfigRepository.delete(workflow_config_id);
+      const deletedWorkflowConfig = await workflowConfigRepository.delete(workflow_config_id, organisationId);
       
       return responseHandler.success(res, deletedWorkflowConfig, 'Workflow config deleted successfully');
     } catch (error) {
@@ -177,15 +192,21 @@ class WorkflowConfigController {
     try {
       const { workflow_config_id } = req.params;
       const { leads_count } = req.body;
+      const organisationId = req.user.organisation_id;
+      
+      // Check if user has an organisation
+      if (!organisationId) {
+        return responseHandler.error(res, 'User must be associated with an organisation to update workflow configs', 400);
+      }
       
       // Check if workflow config exists
-      const existingWorkflowConfig = await workflowConfigRepository.findById(workflow_config_id);
+      const existingWorkflowConfig = await workflowConfigRepository.findById(workflow_config_id, organisationId);
       if (!existingWorkflowConfig) {
         return responseHandler.error(res, 'Workflow config not found', 404);
       }
       
       // Update leads count
-      const updatedWorkflowConfig = await workflowConfigRepository.updateLeadsCount(workflow_config_id, leads_count);
+      const updatedWorkflowConfig = await workflowConfigRepository.updateLeadsCount(workflow_config_id, leads_count, organisationId);
       
       return responseHandler.success(res, updatedWorkflowConfig, 'Leads count updated successfully');
     } catch (error) {
