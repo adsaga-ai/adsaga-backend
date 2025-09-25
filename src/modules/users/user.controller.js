@@ -293,11 +293,25 @@ class UserController {
       }
       
       // Send OTP email
-      await sendEmail({
-        to: email,
-        subject: 'Email Verification - AdSaga',
-        html: otpVerificationEmail(otpCode, false)
-      });
+      try {
+        req.log.info({ email, otpCode }, 'Attempting to send OTP email');
+        
+        // Generate email HTML content
+        const emailHtml = otpVerificationEmail(otpCode, false);
+        req.log.debug({ email, htmlLength: emailHtml.length }, 'Generated email HTML content');
+        
+        const emailResult = await sendEmail({
+          to: email,
+          subject: 'Email Verification - AdSaga',
+          html: emailHtml
+        });
+        req.log.info({ email, messageId: emailResult?.[0]?.headers?.['x-message-id'] }, 'OTP email sent successfully');
+      } catch (emailError) {
+        req.log.error(emailError, 'Failed to send OTP email');
+        // Don't throw the error here - we still want to return success to user for security
+        // but log the error for debugging
+        console.error('Email sending failed:', emailError.message);
+      }
       
       return responseHandler.success(res, {
         message: 'OTP sent successfully',
@@ -442,11 +456,25 @@ class UserController {
       );
       
       // Send new OTP email
-      await sendEmail({
-        to: email,
-        subject: 'Email Verification - AdSaga (Resend)',
-        html: otpVerificationEmail(otpCode, true)
-      });
+      try {
+        req.log.info({ email, otpCode }, 'Attempting to resend OTP email');
+        
+        // Generate email HTML content
+        const emailHtml = otpVerificationEmail(otpCode, true);
+        req.log.debug({ email, htmlLength: emailHtml.length }, 'Generated resend email HTML content');
+        
+        const emailResult = await sendEmail({
+          to: email,
+          subject: 'Email Verification - AdSaga (Resend)',
+          html: emailHtml
+        });
+        req.log.info({ email, messageId: emailResult?.[0]?.headers?.['x-message-id'] }, 'OTP resend email sent successfully');
+      } catch (emailError) {
+        req.log.error(emailError, 'Failed to resend OTP email');
+        // Don't throw the error here - we still want to return success to user for security
+        // but log the error for debugging
+        console.error('Email resend failed:', emailError.message);
+      }
       
       return responseHandler.success(res, {
         message: 'OTP resent successfully',
