@@ -63,6 +63,13 @@ router.post(
   userController.resetPassword
 );
 
+// Get current user (protected route)
+router.get(
+  '/me',
+  auth,
+  userController.getCurrentUser
+);
+
 // Get all users (protected route)
 router.get(
   '/',

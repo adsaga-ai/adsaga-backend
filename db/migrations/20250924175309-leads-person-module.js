@@ -32,7 +32,7 @@ module.exports = {
         allowNull: true
       },
       phone_number: {
-        type: Sequelize.STRING(20),
+        type: Sequelize.STRING(255),
         allowNull: true
       },
       is_verified: {

@@ -51,7 +51,7 @@ module.exports = {
         allowNull: true
       },
       phone_numbers: {
-        type: Sequelize.ARRAY(Sequelize.STRING(20)),
+        type: Sequelize.ARRAY(Sequelize.STRING(255)),
         allowNull: true,
         defaultValue: []
       },

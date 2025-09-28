@@ -142,6 +142,25 @@ class UserController {
     }
   }
 
+  async getCurrentUser(req, res, next) {
+    try {
+      // Get current user data from req.user (set by auth middleware)
+      const user = await userRepository.findByIdWithoutOrgFilter(req.user.user_id);
+      
+      if (!user) {
+        return responseHandler.error(res, 'User not found', 404);
+      }
+      
+      // Remove password from response
+      delete user.password;
+      
+      return responseHandler.success(res, user, 'Current user retrieved successfully');
+    } catch (error) {
+      req.log.error(error, 'Failed to retrieve current user');
+      return responseHandler.error(res, error.message, 500);
+    }
+  }
+
   async getAllUsers(req, res, next) {
     try {
       const users = await userRepository.findAll(req.user.organisation_id);
