@@ -97,4 +97,12 @@ router.delete(
   leadsController.deletePersonFromLead
 );
 
+// Assign user to lead (protected route)
+router.put(
+  '/:lead_id/assign',
+  auth,
+  validate(leadsValidation.assignUser),
+  leadsController.assignUserToLead
+);
+
 module.exports = router;

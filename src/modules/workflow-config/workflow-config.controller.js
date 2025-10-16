@@ -89,7 +89,10 @@ class WorkflowConfigController {
         locations, 
         designations, 
         runs_at, 
-        leads_count 
+        leads_count,
+        company_name,
+        company_website,
+        custom_instructions
       } = req.body;
       
       // Get user and organisation from auth middleware
@@ -113,6 +116,9 @@ class WorkflowConfigController {
         designations: designations || [],
         runsAt: runs_at || null,
         leadsCount: leads_count || 0,
+        companyName: company_name || null,
+        companyWebsite: company_website || null,
+        customInstructions: custom_instructions || [],
         createdBy: userId
       });
       
@@ -131,7 +137,10 @@ class WorkflowConfigController {
         locations, 
         designations, 
         runs_at, 
-        leads_count 
+        leads_count,
+        company_name,
+        company_website,
+        custom_instructions
       } = req.body;
       
       const organisationId = req.user.organisation_id;
@@ -153,7 +162,10 @@ class WorkflowConfigController {
         locations,
         designations,
         runsAt: runs_at,
-        leadsCount: leads_count
+        leadsCount: leads_count,
+        companyName: company_name,
+        companyWebsite: company_website,
+        customInstructions: custom_instructions
       }, organisationId);
       
       return responseHandler.success(res, updatedWorkflowConfig, 'Workflow config updated successfully');

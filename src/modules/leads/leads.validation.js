@@ -385,6 +385,27 @@ const leadsValidation = {
           'any.required': 'Lead ID is required'
         })
     })
+  },
+
+  assignUser: {
+    params: Joi.object({
+      lead_id: Joi.string()
+        .uuid()
+        .required()
+        .messages({
+          'string.guid': 'Lead ID must be a valid UUID',
+          'any.required': 'Lead ID is required'
+        })
+    }),
+    body: Joi.object({
+      assigned_to: Joi.string()
+        .uuid()
+        .required()
+        .messages({
+          'string.guid': 'Assigned to user ID must be a valid UUID',
+          'any.required': 'Assigned to user ID is required'
+        })
+    })
   }
 };
 

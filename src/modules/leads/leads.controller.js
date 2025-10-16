@@ -339,6 +339,38 @@ class LeadsController {
       return responseHandler.error(res, error.message, 500);
     }
   }
+
+  // Assign user to lead
+  async assignUserToLead(req, res, next) {
+    try {
+      const { lead_id } = req.params;
+      const { assigned_to } = req.body;
+      
+      const organisationId = req.user.organisation_id;
+      const assignedBy = req.user.user_id;
+      
+      // Check if lead exists
+      const existingLead = await leadsRepository.findById(lead_id, organisationId);
+      if (!existingLead) {
+        return responseHandler.error(res, 'Lead not found', 404);
+      }
+      
+      // Assign user to lead
+      const updatedLead = await leadsRepository.assignUser(lead_id, organisationId, assigned_to, assignedBy);
+      
+      if (!updatedLead) {
+        return responseHandler.error(res, 'Failed to assign user to lead', 500);
+      }
+      
+      // Fetch updated lead with persons
+      const leadWithPersons = await leadsRepository.findById(lead_id, organisationId);
+      
+      return responseHandler.success(res, leadWithPersons, 'User assigned to lead successfully');
+    } catch (error) {
+      req.log.error(error, 'Failed to assign user to lead');
+      return responseHandler.error(res, error.message, 500);
+    }
+  }
 }
 
 module.exports = new LeadsController();

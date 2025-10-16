@@ -12,6 +12,9 @@ class WorkflowConfigRepository {
           wc.designations,
           wc.runs_at,
           wc.leads_count,
+          wc.company_name,
+          wc.company_website,
+          wc.custom_instructions,
           wc.created_by,
           wc.created_at,
           wc.updated_at,
@@ -41,6 +44,9 @@ class WorkflowConfigRepository {
           wc.designations,
           wc.runs_at,
           wc.leads_count,
+          wc.company_name,
+          wc.company_website,
+          wc.custom_instructions,
           wc.created_by,
           wc.created_at,
           wc.updated_at,
@@ -69,6 +75,9 @@ class WorkflowConfigRepository {
           wc.designations,
           wc.runs_at,
           wc.leads_count,
+          wc.company_name,
+          wc.company_website,
+          wc.custom_instructions,
           wc.created_by,
           wc.created_at,
           wc.updated_at,
@@ -96,7 +105,10 @@ class WorkflowConfigRepository {
         locations, 
         designations, 
         runsAt, 
-        leadsCount, 
+        leadsCount,
+        companyName,
+        companyWebsite,
+        customInstructions,
         createdBy 
       } = workflowConfigData;
       
@@ -108,12 +120,15 @@ class WorkflowConfigRepository {
           locations, 
           designations, 
           runs_at, 
-          leads_count, 
+          leads_count,
+          company_name,
+          company_website,
+          custom_instructions,
           created_by, 
           created_at, 
           updated_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
         RETURNING *
       `;
       
@@ -125,6 +140,9 @@ class WorkflowConfigRepository {
         designations || [],
         runsAt,
         leadsCount || 0,
+        companyName,
+        companyWebsite,
+        customInstructions || [],
         createdBy
       ]);
       
@@ -141,7 +159,10 @@ class WorkflowConfigRepository {
         locations, 
         designations, 
         runsAt, 
-        leadsCount 
+        leadsCount,
+        companyName,
+        companyWebsite,
+        customInstructions
       } = workflowConfigData;
       
       const query = `
@@ -152,8 +173,11 @@ class WorkflowConfigRepository {
           designations = COALESCE($3, designations),
           runs_at = COALESCE($4, runs_at),
           leads_count = COALESCE($5, leads_count),
+          company_name = COALESCE($6, company_name),
+          company_website = COALESCE($7, company_website),
+          custom_instructions = COALESCE($8, custom_instructions),
           updated_at = NOW()
-        WHERE workflow_config_id = $6 AND organisation_id = $7
+        WHERE workflow_config_id = $9 AND organisation_id = $10
         RETURNING *
       `;
       
@@ -163,6 +187,9 @@ class WorkflowConfigRepository {
         designations,
         runsAt,
         leadsCount,
+        companyName,
+        companyWebsite,
+        customInstructions,
         workflowConfigId,
         organisationId
       ]);
@@ -204,6 +231,9 @@ class WorkflowConfigRepository {
           wc.designations,
           wc.runs_at,
           wc.leads_count,
+          wc.company_name,
+          wc.company_website,
+          wc.custom_instructions,
           wc.created_by,
           wc.created_at,
           wc.updated_at,

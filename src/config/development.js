@@ -38,7 +38,14 @@ module.exports = {
         }
     },
     passwordReset: {
-        tokenExpiry: process.env.PASSWORD_RESET_TOKEN_EXPIRY || '1h', // 1 hour
+        tokenExpiry: process.env.PASSWORD_RESET_TOKEN_EXPIRY || '1h',
         frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000'
+    },
+    agentApi: {
+        url: process.env.AGENT_API_URL,
+        port: process.env.AGENT_API_PORT,
+    },
+    mongodb: {
+        uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/adsaga'
     }
 }

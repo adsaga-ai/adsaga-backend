@@ -7,6 +7,7 @@ const cookieParser = require('cookie-parser');
 const config = require('./config');
 const modules = require('./modules');
 const cors = require('cors');
+const { initiateConsumers } = require('./jobs/initiate-consumers');
 
 const logger = pino({
   level: config.logLevel || 'info'
@@ -53,24 +54,28 @@ app.use('/api', modules);
 
 
 const PORT = config.port;
-const server = app.listen(PORT, () => {
-  logger.info({ port: PORT }, 'Server started successfully');
-});
 
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    logger.info('Server closed');
-    process.exit(0);
+(async () => {
+  await initiateConsumers();
+  const server = app.listen(PORT, () => {
+    logger.info({ port: PORT }, 'Server started successfully');
   });
-});
 
-process.on('SIGINT', () => {
-  logger.info('SIGINT received, shutting down gracefully');
-  server.close(() => {
-    logger.info('Server closed');
-    process.exit(0);
+  process.on('SIGTERM', () => {
+    logger.info('SIGTERM received, shutting down gracefully');
+    server.close(() => {
+      logger.info('Server closed');
+      process.exit(0);
+    });
   });
-});
+  
+  process.on('SIGINT', () => {
+    logger.info('SIGINT received, shutting down gracefully');
+    server.close(() => {
+      logger.info('Server closed');
+      process.exit(0);
+    });
+  });
+})();
 
 module.exports = app;

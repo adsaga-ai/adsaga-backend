@@ -50,8 +50,7 @@ class UserController {
       delete user.password;
       
       return responseHandler.success(res, {
-        user,
-        token
+        user
       }, 'Login successful');
     } catch (error) {
       req.log.error(error, 'Failed to login user');

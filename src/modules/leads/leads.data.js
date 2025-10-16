@@ -15,6 +15,9 @@ class LeadsRepository {
           l.website,
           l.phone_numbers,
           l.emails,
+          l.assigned_to,
+          l.assigned_at,
+          l.assigned_by,
           l.created_at,
           l.updated_at,
           w.is_running as workflow_is_running,
@@ -58,6 +61,9 @@ class LeadsRepository {
           l.website,
           l.phone_numbers,
           l.emails,
+          l.assigned_to,
+          l.assigned_at,
+          l.assigned_by,
           l.created_at,
           l.updated_at,
           w.is_running as workflow_is_running,
@@ -201,6 +207,9 @@ class LeadsRepository {
           l.website,
           l.phone_numbers,
           l.emails,
+          l.assigned_to,
+          l.assigned_at,
+          l.assigned_by,
           l.created_at,
           l.updated_at,
           w.is_running as workflow_is_running,
@@ -244,6 +253,9 @@ class LeadsRepository {
           l.website,
           l.phone_numbers,
           l.emails,
+          l.assigned_to,
+          l.assigned_at,
+          l.assigned_by,
           l.created_at,
           l.updated_at,
           w.is_running as workflow_is_running,
@@ -301,6 +313,26 @@ class LeadsRepository {
       return parseInt(result.rows[0].count);
     } catch (error) {
       throw new Error(`Failed to get leads count by workflow: ${error.message}`);
+    }
+  }
+
+  async assignUser(leadId, organisationId, assignedTo, assignedBy) {
+    try {
+      const query = `
+        UPDATE leads 
+        SET 
+          assigned_to = $1,
+          assigned_at = NOW(),
+          assigned_by = $2,
+          updated_at = NOW()
+        WHERE lead_id = $3 AND organisation_id = $4
+        RETURNING *
+      `;
+      
+      const result = await pool.query(query, [assignedTo, assignedBy, leadId, organisationId]);
+      return result.rows[0] || null;
+    } catch (error) {
+      throw new Error(`Failed to assign user to lead: ${error.message}`);
     }
   }
 }
