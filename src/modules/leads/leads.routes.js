@@ -105,4 +105,11 @@ router.put(
   leadsController.assignUserToLead
 );
 
+// Verify lead person (protected route)
+router.patch(
+  '/persons/:person_id/verify',
+  auth,
+  leadsController.verifyLeadPerson
+);
+
 module.exports = router;

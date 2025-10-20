@@ -12,7 +12,10 @@ const pool = new Pool({
     connectionTimeoutMillis: 2000,
     ssl: {
         rejectUnauthorized: false
-    }
+    },
+    // Remove the log function to avoid connection pool noise
+    statement_timeout: 0,
+    query_timeout: 0,
 });
 
 pool.on('error', (err) => {
@@ -30,4 +33,42 @@ pool.connect()
         process.exit(-1);
     });
 
-module.exports = pool;
+// Query wrapper with enhanced logging
+const queryWithLogging = async (text, params) => {
+    const start = Date.now();
+    console.log('🔍 Executing Query:', text);
+    if (params && params.length > 0) {
+        console.log('📝 Query Parameters:', params);
+    }
+    
+    try {
+        const result = await pool.query(text, params);
+        const duration = Date.now() - start;
+        console.log(`✅ Query completed in ${duration}ms`);
+        console.log(`📊 Rows affected: ${result.rowCount || 0}`);
+        return result;
+    } catch (error) {
+        const duration = Date.now() - start;
+        console.error(`❌ Query failed after ${duration}ms:`, error.message);
+        console.error('🔍 Failed Query:', text);
+        if (params && params.length > 0) {
+            console.error('📝 Query Parameters:', params);
+        }
+        throw error;
+    }
+};
+
+// Enhanced pool object with query logging
+const enhancedPool = {
+    ...pool,
+    query: queryWithLogging,
+    // Keep original methods
+    connect: pool.connect.bind(pool),
+    end: pool.end.bind(pool),
+    on: pool.on.bind(pool),
+    totalCount: pool.totalCount,
+    idleCount: pool.idleCount,
+    waitingCount: pool.waitingCount
+};
+
+module.exports = enhancedPool;

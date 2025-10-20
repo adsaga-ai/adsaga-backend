@@ -20,7 +20,7 @@ class LeadsRepository {
           l.assigned_by,
           l.created_at,
           l.updated_at,
-          w.is_running as workflow_is_running,
+          w.status as workflow_status,
           w.started_at as workflow_started_at,
           w.finished_at as workflow_finished_at
         FROM leads l
@@ -66,7 +66,7 @@ class LeadsRepository {
           l.assigned_by,
           l.created_at,
           l.updated_at,
-          w.is_running as workflow_is_running,
+          w.status as workflow_status,
           w.started_at as workflow_started_at,
           w.finished_at as workflow_finished_at
         FROM leads l
@@ -212,7 +212,7 @@ class LeadsRepository {
           l.assigned_by,
           l.created_at,
           l.updated_at,
-          w.is_running as workflow_is_running,
+          w.status as workflow_status,
           w.started_at as workflow_started_at,
           w.finished_at as workflow_finished_at
         FROM leads l
@@ -258,7 +258,7 @@ class LeadsRepository {
           l.assigned_by,
           l.created_at,
           l.updated_at,
-          w.is_running as workflow_is_running,
+          w.status as workflow_status,
           w.started_at as workflow_started_at,
           w.finished_at as workflow_finished_at
         FROM leads l
@@ -313,6 +313,156 @@ class LeadsRepository {
       return parseInt(result.rows[0].count);
     } catch (error) {
       throw new Error(`Failed to get leads count by workflow: ${error.message}`);
+    }
+  }
+
+  async findWithPagination(options) {
+    try {
+      const {
+        organisationId,
+        workflowId,
+        search,
+        status,
+        page,
+        limit,
+        offset,
+        sortBy = 'created_at',
+        sortOrder = 'DESC'
+      } = options;
+
+      // Build WHERE clause
+      const whereConditions = ['l.organisation_id = $1'];
+      const queryParams = [organisationId];
+      let paramIndex = 1;
+
+      if (workflowId) {
+        paramIndex++;
+        whereConditions.push(`l.workflow_id = $${paramIndex}`);
+        queryParams.push(workflowId);
+      }
+
+      if (search) {
+        paramIndex++;
+        whereConditions.push(`(
+          LOWER(l.company_name) LIKE LOWER($${paramIndex}) OR
+          LOWER(l.company_description) LIKE LOWER($${paramIndex}) OR
+          LOWER(l.website) LIKE LOWER($${paramIndex}) OR
+          EXISTS (
+            SELECT 1 FROM lead_person lp 
+            WHERE lp.lead_id = l.lead_id 
+            AND (LOWER(lp.person_name) LIKE LOWER($${paramIndex}) OR 
+                 LOWER(lp.email) LIKE LOWER($${paramIndex}) OR 
+                 LOWER(lp.phone_number) LIKE LOWER($${paramIndex}))
+          )
+        )`);
+        queryParams.push(`%${search}%`);
+      }
+
+      if (status) {
+        if (status === 'verified') {
+          whereConditions.push(`EXISTS (
+            SELECT 1 FROM lead_person lp 
+            WHERE lp.lead_id = l.lead_id 
+            AND lp.is_verified = true
+          )`);
+        } else if (status === 'unverified') {
+          whereConditions.push(`NOT EXISTS (
+            SELECT 1 FROM lead_person lp 
+            WHERE lp.lead_id = l.lead_id 
+            AND lp.is_verified = true
+          )`);
+        } else if (status === 'with_contacts') {
+          whereConditions.push(`EXISTS (
+            SELECT 1 FROM lead_person lp 
+            WHERE lp.lead_id = l.lead_id
+          )`);
+        } else if (status === 'no_contacts') {
+          whereConditions.push(`NOT EXISTS (
+            SELECT 1 FROM lead_person lp 
+            WHERE lp.lead_id = l.lead_id
+          )`);
+        }
+      }
+
+      const whereClause = whereConditions.join(' AND ');
+
+      // Validate sort column to prevent SQL injection
+      const allowedSortColumns = ['created_at', 'updated_at', 'company_name'];
+      const sortColumn = allowedSortColumns.includes(sortBy) ? sortBy : 'created_at';
+      const sortDirection = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+      const orderBy = `l.${sortColumn} ${sortDirection}`;
+
+      // Count query
+      const countQuery = `
+        SELECT COUNT(*) as total_count
+        FROM leads l
+        LEFT JOIN workflows w ON l.workflow_id = w.workflow_id
+        LEFT JOIN workflow_config wc ON w.workflow_config_id = wc.workflow_config_id
+        WHERE ${whereClause}
+      `;
+
+      // Data query with pagination
+      const dataQuery = `
+        SELECT 
+          l.lead_id,
+          l.organisation_id,
+          l.workflow_id,
+          l.company_name,
+          l.company_description,
+          l.company_locations,
+          l.website,
+          l.phone_numbers,
+          l.emails,
+          l.assigned_to,
+          l.assigned_at,
+          l.assigned_by,
+          l.created_at,
+          l.updated_at,
+          w.status as workflow_status,
+          w.started_at as workflow_started_at,
+          w.finished_at as workflow_finished_at,
+          wc.domains,
+          wc.locations,
+          wc.designations,
+          wc.company_name as workflow_config_name,
+          wc.company_website as workflow_config_website,
+          wc.custom_instructions
+        FROM leads l
+        LEFT JOIN workflows w ON l.workflow_id = w.workflow_id
+        LEFT JOIN workflow_config wc ON w.workflow_config_id = wc.workflow_config_id
+        WHERE ${whereClause}
+        ORDER BY ${orderBy}
+        LIMIT $${paramIndex + 1} OFFSET $${paramIndex + 2}
+      `;
+
+      queryParams.push(limit, offset);
+
+      // Execute both queries
+      const [countResult, dataResult] = await Promise.all([
+        pool.query(countQuery, queryParams.slice(0, -2)), // Exclude limit and offset for count
+        pool.query(dataQuery, queryParams)
+      ]);
+
+      const totalCount = parseInt(countResult.rows[0].total_count, 10);
+
+      // Fetch related lead persons for each lead
+      const leadsWithPersons = await Promise.all(
+        dataResult.rows.map(async (lead) => {
+          const persons = await leadPersonRepository.findByLeadId(lead.lead_id);
+          
+          return {
+            ...lead,
+            lead_persons: persons
+          };
+        })
+      );
+
+      return {
+        leads: leadsWithPersons,
+        totalCount
+      };
+    } catch (error) {
+      throw new Error(`Failed to fetch leads with pagination: ${error.message}`);
     }
   }
 

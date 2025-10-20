@@ -1,9 +1,9 @@
-const Producer = require('../utils/agenda/agenda-producer');
+const RedisProducer = require('../utils/redis/redis-producer');
 const config = require('./');
 
 /**
  * Producer connection singleton
- * Initializes and exports a single Producer instance for the application
+ * Initializes and exports a single Redis Producer instance for the application
  */
 class ProducerConnection {
   constructor() {
@@ -21,28 +21,17 @@ class ProducerConnection {
     }
 
     try {
-      this.producer = new Producer({
-        agenda: {
-          db: {
-            address: config.mongodb.uri,
-            collection: 'agenda-jobs',
-            options: {
-              connectTimeoutMS: 30000,
-              socketTimeoutMS: 30000,
-              maxPoolSize: 10,
-              serverSelectionTimeoutMS: 5000,
-              heartbeatFrequencyMS: 10000
-            }
-          }
-        }
+      this.producer = new RedisProducer({
+        redis: config.redis,
+        jobChannel: 'job_queue'
       });
 
       await this.producer.initialize();
       this.isInitialized = true;
       
-      console.log('Producer connection initialized successfully');
+      console.log('Redis Producer connection initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize producer connection:', error);
+      console.error('Failed to initialize Redis producer connection:', error);
       throw error;
     }
   }

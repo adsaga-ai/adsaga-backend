@@ -67,4 +67,34 @@ router.get('/:workflow_id',
   workflowController.getWorkflowById
 );
 
+/**
+ * @route GET /api/workflow/:workflow_id/leads
+ * @desc Get leads for a specific workflow
+ * @access Private
+ */
+router.get('/:workflow_id/leads',
+  workflowValidation.validateWorkflowId,
+  workflowController.getWorkflowLeads
+);
+
+/**
+ * @route GET /api/workflow/leads/:lead_id/persons
+ * @desc Get lead persons for a specific lead
+ * @access Private
+ */
+router.get('/leads/:lead_id/persons',
+  workflowValidation.validateLeadId,
+  workflowController.getLeadPersons
+);
+
+/**
+ * @route PUT /api/workflow/persons/:person_id/verify
+ * @desc Verify/unverify a lead person
+ * @access Private
+ */
+router.put('/persons/:person_id/verify',
+  workflowValidation.validatePersonId,
+  workflowController.verifyLeadPerson
+);
+
 module.exports = router;

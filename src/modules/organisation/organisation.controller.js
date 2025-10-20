@@ -36,7 +36,7 @@ class OrganisationController {
       
       // Get user from auth middleware
       const userId = req.user.user_id;
-      
+
       // Generate UUID for organisation
       const organisationId = crypto.randomUUID();
       
@@ -53,7 +53,7 @@ class OrganisationController {
       
       // Update user to associate with the new organisation
       const userRepository = require('../users/user.data');
-      await userRepository.update(userId, { organisation_id: organisationId });
+      await userRepository.updateWithoutOrganisationId(userId, { organisation_id: organisationId });
       
       // Create locations if provided
       let createdLocations = [];

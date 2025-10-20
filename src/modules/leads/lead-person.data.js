@@ -24,22 +24,43 @@ class LeadPersonRepository {
     }
   }
 
-  async findById(leadPersonId, leadId) {
+  async findById(leadPersonId, leadId = null) {
     try {
-      const query = `
-        SELECT 
-          lead_person_id,
-          lead_id,
-          person_name,
-          email,
-          phone_number,
-          is_verified,
-          created_at,
-          updated_at
-        FROM lead_person
-        WHERE lead_person_id = $1 AND lead_id = $2
-      `;
-      const result = await pool.query(query, [leadPersonId, leadId]);
+      let query, params;
+      
+      if (leadId) {
+        query = `
+          SELECT 
+            lead_person_id,
+            lead_id,
+            person_name,
+            email,
+            phone_number,
+            is_verified,
+            created_at,
+            updated_at
+          FROM lead_person
+          WHERE lead_person_id = $1 AND lead_id = $2
+        `;
+        params = [leadPersonId, leadId];
+      } else {
+        query = `
+          SELECT 
+            lead_person_id,
+            lead_id,
+            person_name,
+            email,
+            phone_number,
+            is_verified,
+            created_at,
+            updated_at
+          FROM lead_person
+          WHERE lead_person_id = $1
+        `;
+        params = [leadPersonId];
+      }
+      
+      const result = await pool.query(query, params);
       return result.rows[0] || null;
     } catch (error) {
       throw new Error(`Failed to fetch lead person by ID: ${error.message}`);
@@ -155,6 +176,26 @@ class LeadPersonRepository {
       return result.rows[0] || null;
     } catch (error) {
       throw new Error(`Failed to update lead person: ${error.message}`);
+    }
+  }
+
+  // Update only verification status (PATCH behavior)
+  async updateVerificationStatus(leadPersonId, isVerified) {
+    try {
+      const query = `
+        UPDATE lead_person 
+        SET 
+          is_verified = $1, 
+          updated_at = NOW()
+        WHERE lead_person_id = $2
+        RETURNING *
+      `;
+      
+      const result = await pool.query(query, [isVerified, leadPersonId]);
+      
+      return result.rows[0] || null;
+    } catch (error) {
+      throw new Error(`Failed to update lead person verification status: ${error.message}`);
     }
   }
 

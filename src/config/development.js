@@ -39,13 +39,20 @@ module.exports = {
     },
     passwordReset: {
         tokenExpiry: process.env.PASSWORD_RESET_TOKEN_EXPIRY || '1h',
-        frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000'
+        // Used as the base URL for all frontend links (password reset, invite acceptance, etc.)
+        frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3001'
     },
     agentApi: {
         url: process.env.AGENT_API_URL,
         port: process.env.AGENT_API_PORT,
     },
-    mongodb: {
-        uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/adsaga'
+    redis: {
+        host: process.env.REDIS_HOST,
+        port: process.env.REDIS_PORT,
+        password: process.env.REDIS_PASSWORD,
+        db: process.env.REDIS_DB,
+        retryDelayOnFailover: 100,
+        enableReadyCheck: false,
+        maxRetriesPerRequest: null
     }
 }

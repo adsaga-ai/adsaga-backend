@@ -77,6 +77,33 @@ router.get(
   userController.getAllUsers
 );
 
+// Organisation Invites
+router.post(
+  '/invites',
+  auth,
+  validate(userValidation.createInvite),
+  userController.createInvite
+);
+
+router.get(
+  '/invites',
+  auth,
+  userController.listInvites
+);
+
+router.post(
+  '/invites/accept',
+  validate(userValidation.acceptInvite),
+  userController.acceptInvite
+);
+
+router.post(
+  '/invites/:invite_id/revoke',
+  auth,
+  validate(userValidation.revokeInvite),
+  userController.revokeInvite
+);
+
 // Get user by ID (protected route)
 router.get(
   '/:user_id',

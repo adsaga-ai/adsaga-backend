@@ -4,12 +4,66 @@ const responseHandler = require('../../utils/response-handler');
 const crypto = require('crypto');
 
 class LeadsController {
-  // Get all leads for an organisation
+  // Get all leads for an organisation with pagination, search, and filters
   async getAllLeads(req, res, next) {
     try {
       const organisationId = req.user.organisation_id;
-      const leads = await leadsRepository.findAll(organisationId);
-      return responseHandler.success(res, leads, 'Leads retrieved successfully');
+      
+      // Check if user has an organisation
+      if (!organisationId) {
+        return responseHandler.error(res, 'User must be associated with an organisation to view leads', 400);
+      }
+
+      // Get query parameters for filtering, pagination, and search
+      const { 
+        workflow_id, 
+        page = 1, 
+        limit = 10, 
+        search,
+        status,
+        sort_by = 'created_at',
+        sort_order = 'DESC'
+      } = req.query;
+
+      // Convert page and limit to numbers
+      const pageNum = parseInt(page, 10);
+      const limitNum = parseInt(limit, 10);
+      const offset = (pageNum - 1) * limitNum;
+
+      // Get leads with pagination and search
+      const result = await leadsRepository.findWithPagination({
+        organisationId,
+        workflowId: workflow_id,
+        search,
+        status,
+        page: pageNum,
+        limit: limitNum,
+        offset,
+        sortBy: sort_by,
+        sortOrder: sort_order
+      });
+
+      req.log.info({ 
+        organisation_id: organisationId,
+        user_id: req.user.user_id,
+        leads_count: result.leads.length,
+        total_count: result.totalCount,
+        page: pageNum,
+        limit: limitNum,
+        filters: { workflow_id, search, status }
+      }, 'Leads retrieved successfully');
+
+      return responseHandler.success(res, {
+        leads: result.leads,
+        pagination: {
+          currentPage: pageNum,
+          totalPages: Math.ceil(result.totalCount / limitNum),
+          totalItems: result.totalCount,
+          itemsPerPage: limitNum,
+          hasNextPage: pageNum < Math.ceil(result.totalCount / limitNum),
+          hasPrevPage: pageNum > 1
+        }
+      }, 'Leads retrieved successfully');
     } catch (error) {
       req.log.error(error, 'Failed to retrieve leads');
       return responseHandler.error(res, error.message, 500);
@@ -368,6 +422,41 @@ class LeadsController {
       return responseHandler.success(res, leadWithPersons, 'User assigned to lead successfully');
     } catch (error) {
       req.log.error(error, 'Failed to assign user to lead');
+      return responseHandler.error(res, error.message, 500);
+    }
+  }
+
+  // Verify a lead person
+  async verifyLeadPerson(req, res, next) {
+    try {
+      const { person_id } = req.params;
+      const organisationId = req.user.organisation_id;
+      
+      // Check if person exists and belongs to user's organisation
+      const person = await leadPersonRepository.findById(person_id);
+      if (!person) {
+        return responseHandler.error(res, 'Lead person not found', 404);
+      }
+      
+      // Check if the lead belongs to the user's organisation
+      const lead = await leadsRepository.findById(person.lead_id, organisationId);
+      if (!lead) {
+        return responseHandler.error(res, 'Lead not found or does not belong to your organisation', 404);
+      }
+      
+      // Update person verification status using PATCH behavior
+      const updatedPerson = await leadPersonRepository.updateVerificationStatus(person_id, true);
+      
+      req.log.info({ 
+        person_id,
+        lead_id: person.lead_id,
+        organisation_id: organisationId,
+        user_id: req.user.user_id
+      }, 'Lead person verified successfully');
+      
+      return responseHandler.success(res, updatedPerson, 'Lead person verified successfully');
+    } catch (error) {
+      req.log.error(error, 'Failed to verify lead person');
       return responseHandler.error(res, error.message, 500);
     }
   }

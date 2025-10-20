@@ -21,7 +21,7 @@ const logger = pino({
  * @param {string} data.workflow_config_id - ID of the workflow config to process
  * @param {string} data.workflow_id - ID of the workflow to update
  * @param {string} data.organisation_id - ID of the organisation
- * @param {Object} job - Agenda job object
+ * @param {Object} job - Mock job object (for compatibility with existing code)
  * @returns {Promise<Object>} Result of the lead discovery process
  */
 async function leadDiscoveryHandler(data, job) {

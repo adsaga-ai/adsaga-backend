@@ -2,7 +2,8 @@ const userRepository = require('./user.data');
 const passwordResetTokenRepository = require('./password-reset-token.data');
 const userEmailVerificationRepository = require('./user-email-verification.data');
 const { sendEmail } = require('../../utils/email-service-sendgrid');
-const { passwordResetEmail } = require('../../templates');
+const { passwordResetEmail, inviteUserEmail } = require('../../templates');
+const userInviteRepository = require('./user-invite.data');
 const otpVerificationEmail = require('../../templates/otp-verification-email');
 const responseHandler = require('../../utils/response-handler');
 const jwt = require('jsonwebtoken');
@@ -170,6 +171,159 @@ class UserController {
     }
   }
 
+  // Invite a user to current organisation
+  async createInvite(req, res, next) {
+    try {
+      const organisationId = req.user.organisation_id;
+      const invitedByUserId = req.user.user_id;
+      const { email } = req.body;
+
+      if (!organisationId) {
+        return responseHandler.error(res, 'User must be associated with an organisation to invite users', 400);
+      }
+
+      // User can only belong to one organisation; check if target email already has an account
+      const existingUser = await userRepository.findByEmailWithoutOrgFilter(email);
+      if (existingUser && existingUser.organisation_id) {
+        return responseHandler.error(res, 'User already belongs to an organisation', 409);
+      }
+
+      // Expire in 7 days
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      // Optionally cleanup expired invites
+      await userInviteRepository.deleteExpired();
+
+      const invite = await userInviteRepository.createInvite({
+        organisationId,
+        invitedEmail: email,
+        invitedByUserId,
+        expiresAt
+      });
+
+      const inviteUrl = `${config.passwordReset.frontendUrl}/invite/accept?token=${invite.token}`;
+
+      try {
+        await sendEmail({
+          to: email,
+          subject: 'Invitation to join organisation - AdSaga',
+          template: inviteUserEmail,
+          templateData: {
+            organisationName: req.user.organisation_name || 'your organisation',
+            inviteUrl,
+            invitedEmail: email
+          }
+        });
+      } catch (emailError) {
+        req.log.error(emailError, 'Failed to send invite email');
+      }
+
+      return responseHandler.success(res, {
+        invite_id: invite.invite_id,
+        invited_email: invite.invited_email,
+        expires_at: invite.expires_at
+      }, 'Invitation created and email sent', 201);
+    } catch (error) {
+      req.log.error(error, 'Failed to create invite');
+      return responseHandler.error(res, error.message, 500);
+    }
+  }
+
+  async listInvites(req, res, next) {
+    try {
+      const organisationId = req.user.organisation_id;
+      if (!organisationId) {
+        return responseHandler.error(res, 'User must be associated with an organisation to list invites', 400);
+      }
+      const invites = await userInviteRepository.listByOrganisation(organisationId);
+      return responseHandler.success(res, invites, 'Invites retrieved successfully');
+    } catch (error) {
+      req.log.error(error, 'Failed to list invites');
+      return responseHandler.error(res, error.message, 500);
+    }
+  }
+
+  async revokeInvite(req, res, next) {
+    try {
+      const organisationId = req.user.organisation_id;
+      const { invite_id } = req.params;
+      if (!organisationId) {
+        return responseHandler.error(res, 'User must be associated with an organisation to revoke invites', 400);
+      }
+      const revoked = await userInviteRepository.revoke(invite_id, organisationId);
+      if (!revoked) {
+        return responseHandler.error(res, 'Invite not found or already processed', 404);
+      }
+      return responseHandler.success(res, revoked, 'Invite revoked successfully');
+    } catch (error) {
+      req.log.error(error, 'Failed to revoke invite');
+      return responseHandler.error(res, error.message, 500);
+    }
+  }
+
+  // Accept invite: creates account (if not exists) and associates to org
+  async acceptInvite(req, res, next) {
+    try {
+      const { token, fullname, password } = req.body;
+
+      const invite = await userInviteRepository.findByToken(token);
+      if (!invite) {
+        return responseHandler.error(res, 'Invalid or expired invite token', 400);
+      }
+
+      if (invite.revoked_at) {
+        return responseHandler.error(res, 'Invite has been revoked', 400);
+      }
+
+      if (invite.accepted_at) {
+        return responseHandler.error(res, 'Invite already accepted', 400);
+      }
+
+      if (new Date() > new Date(invite.expires_at)) {
+        return responseHandler.error(res, 'Invite token has expired', 400);
+      }
+
+      // If user exists, ensure they are not part of another organisation
+      const existingUser = await userRepository.findByEmailWithoutOrgFilter(invite.invited_email);
+      if (existingUser && existingUser.organisation_id && existingUser.organisation_id !== invite.organisation_id) {
+        return responseHandler.error(res, 'User already belongs to another organisation', 409);
+      }
+
+      let userId;
+      if (!existingUser) {
+        // Create new user with provided password and name
+        userId = crypto.randomUUID();
+        await userRepository.create({
+          userId,
+          organisationId: invite.organisation_id,
+          fullname,
+          email: invite.invited_email,
+          password
+        });
+      } else {
+        userId = existingUser.user_id;
+        // Attach existing user to this organisation, but only if not already attached elsewhere
+        if (!existingUser.organisation_id) {
+          await userRepository.updateWithoutOrganisationId(userId, { organisation_id: invite.organisation_id });
+        } else if (existingUser.organisation_id === invite.organisation_id) {
+          // Already belongs; allow setting password if desired
+          const hashed = await userRepository.hashPassword(password);
+          await userRepository.updatePassword(userId, hashed, invite.organisation_id);
+        }
+      }
+
+      // Mark invite accepted
+      await userInviteRepository.markAccepted(invite.invite_id);
+
+      return responseHandler.success(res, {
+        organisation_id: invite.organisation_id,
+        email: invite.invited_email
+      }, 'Invitation accepted. Account ready to login.');
+    } catch (error) {
+      req.log.error(error, 'Failed to accept invite');
+      return responseHandler.error(res, error.message, 500);
+    }
+  }
   async logout(req, res, next) {
     try {
       // Clear the auth token cookie

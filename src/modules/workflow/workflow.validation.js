@@ -65,6 +65,48 @@ const workflowValidation = {
     }
     
     next();
+  },
+
+  /**
+   * Validate lead ID parameter
+   */
+  validateLeadId: (req, res, next) => {
+    const schema = Joi.object({
+      lead_id: Joi.string().uuid().required()
+    });
+
+    const { error } = schema.validate(req.params);
+    
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        error: error.details[0].message
+      });
+    }
+    
+    next();
+  },
+
+  /**
+   * Validate person ID parameter
+   */
+  validatePersonId: (req, res, next) => {
+    const schema = Joi.object({
+      person_id: Joi.string().uuid().required()
+    });
+
+    const { error } = schema.validate(req.params);
+    
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        error: error.details[0].message
+      });
+    }
+    
+    next();
   }
 };
 

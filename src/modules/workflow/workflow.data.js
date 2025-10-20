@@ -106,9 +106,8 @@ class WorkflowRepository {
         UPDATE workflows 
         SET 
           status = $1,
-          ${status === 'RUNNING' ? 'started_at = NOW(),' : ''}
-          ${status === 'FINISHED' ? 'finished_at = NOW(),' : ''}
-          updated_at = NOW()
+          ${status === 'RUNNING' ? 'started_at = NOW()' : ''}
+          ${status === 'FINISHED' ? 'finished_at = NOW()' : ''}
         WHERE workflow_id = $2 AND organisation_id = $3
         RETURNING *
       `;
@@ -347,6 +346,143 @@ class WorkflowRepository {
       };
     } catch (error) {
       throw new Error(`Failed to fetch workflows with pagination: ${error.message}`);
+    }
+  }
+
+  async findLeadsWithPagination(options) {
+    try {
+      const {
+        workflowId,
+        organisationId,
+        search,
+        page,
+        limit,
+        offset,
+        sortBy = 'created_at',
+        sortOrder = 'DESC'
+      } = options;
+
+      // Build WHERE conditions
+      let whereConditions = ['l.workflow_id = $1', 'l.organisation_id = $2'];
+      let queryParams = [workflowId, organisationId];
+      let paramIndex = 3;
+
+      if (search) {
+        whereConditions.push(`(
+          l.company_name ILIKE $${paramIndex} OR 
+          l.company_description ILIKE $${paramIndex} OR 
+          l.website ILIKE $${paramIndex} OR 
+          l.company_locations::text ILIKE $${paramIndex} OR 
+          l.phone_numbers::text ILIKE $${paramIndex} OR 
+          l.emails::text ILIKE $${paramIndex}
+        )`);
+        queryParams.push(`%${search}%`);
+        paramIndex++;
+      }
+
+      const whereClause = whereConditions.join(' AND ');
+
+      // Build ORDER BY clause
+      const validSortFields = ['created_at', 'updated_at', 'company_name'];
+      const sortField = validSortFields.includes(sortBy) ? sortBy : 'created_at';
+      const sortDirection = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+      const orderBy = `l.${sortField} ${sortDirection}`;
+
+      // Count query
+      const countQuery = `
+        SELECT COUNT(*) as total_count
+        FROM leads l
+        WHERE ${whereClause}
+      `;
+
+      // Data query with pagination
+      const dataQuery = `
+        SELECT 
+          l.lead_id,
+          l.organisation_id,
+          l.workflow_id,
+          l.company_name,
+          l.company_description,
+          l.company_locations,
+          l.website,
+          l.phone_numbers,
+          l.emails,
+          l.created_at,
+          l.updated_at,
+          w.status as workflow_status,
+          wc.company_name as config_company_name,
+          wc.domains,
+          wc.locations,
+          wc.designations
+        FROM leads l
+        LEFT JOIN workflows w ON l.workflow_id = w.workflow_id
+        LEFT JOIN workflow_config wc ON w.workflow_config_id = wc.workflow_config_id
+        WHERE ${whereClause}
+        ORDER BY ${orderBy}
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+      `;
+
+      queryParams.push(limit, offset);
+
+      // Execute both queries
+      const [countResult, dataResult] = await Promise.all([
+        pool.query(countQuery, queryParams.slice(0, -2)), // Exclude limit and offset for count
+        pool.query(dataQuery, queryParams)
+      ]);
+
+      const totalCount = parseInt(countResult.rows[0].total_count, 10);
+
+      return {
+        leads: dataResult.rows,
+        totalCount
+      };
+    } catch (error) {
+      throw new Error(`Failed to fetch leads with pagination: ${error.message}`);
+    }
+  }
+
+  async findLeadPersons(leadId, organisationId) {
+    try {
+      const query = `
+        SELECT 
+          lp.lead_person_id,
+          lp.lead_id,
+          lp.person_name,
+          lp.email,
+          lp.phone_number,
+          lp.is_verified,
+          lp.created_at,
+          lp.updated_at
+        FROM lead_person lp
+        INNER JOIN leads l ON lp.lead_id = l.lead_id
+        WHERE lp.lead_id = $1 AND l.organisation_id = $2
+        ORDER BY lp.created_at DESC
+      `;
+      const result = await pool.query(query, [leadId, organisationId]);
+      return result.rows;
+    } catch (error) {
+      throw new Error(`Failed to fetch lead persons: ${error.message}`);
+    }
+  }
+
+  async verifyLeadPerson(personId, isVerified, organisationId) {
+    try {
+      const query = `
+        UPDATE lead_person 
+        SET 
+          is_verified = $1,
+          updated_at = NOW()
+        WHERE lead_person_id = $2 
+        AND lead_id IN (
+          SELECT lead_id FROM leads 
+          WHERE organisation_id = $3
+        )
+        RETURNING *
+      `;
+      const result = await pool.query(query, [isVerified, personId, organisationId]);
+      return result.rows[0] || null;
+    } catch (error) {
+      throw new Error(`Failed to verify lead person: ${error.message}`);
     }
   }
 }

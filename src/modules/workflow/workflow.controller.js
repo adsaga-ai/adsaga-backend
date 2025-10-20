@@ -365,6 +365,177 @@ class WorkflowController {
       return responseHandler.error(res, error.message, 500);
     }
   }
+
+  /**
+   * Get leads for a specific workflow
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
+   */
+  async getWorkflowLeads(req, res, next) {
+    try {
+      const { workflow_id } = req.params;
+      const organisationId = req.user.organisation_id;
+      
+      // Check if user has an organisation
+      if (!organisationId) {
+        return responseHandler.error(res, 'User must be associated with an organisation to view workflow leads', 400);
+      }
+
+      // Validate workflow_id
+      if (!workflow_id) {
+        return responseHandler.error(res, 'workflow_id is required', 400);
+      }
+
+      // Get query parameters for pagination and search
+      const { 
+        page = 1, 
+        limit = 10, 
+        search,
+        sort_by = 'created_at',
+        sort_order = 'DESC'
+      } = req.query;
+
+      // Convert page and limit to numbers
+      const pageNum = parseInt(page, 10);
+      const limitNum = parseInt(limit, 10);
+      const offset = (pageNum - 1) * limitNum;
+
+      // Get leads with pagination and search
+      const result = await workflowRepository.findLeadsWithPagination({
+        workflowId: workflow_id,
+        organisationId,
+        search,
+        page: pageNum,
+        limit: limitNum,
+        offset,
+        sortBy: sort_by,
+        sortOrder: sort_order
+      });
+
+      logger.info({ 
+        workflow_id,
+        organisation_id: organisationId,
+        user_id: req.user.user_id,
+        leads_count: result.leads.length,
+        total_count: result.totalCount,
+        page: pageNum,
+        limit: limitNum
+      }, 'Workflow leads retrieved successfully');
+
+      return responseHandler.success(res, {
+        leads: result.leads,
+        pagination: {
+          current_page: pageNum,
+          per_page: limitNum,
+          total_count: result.totalCount,
+          total_pages: Math.ceil(result.totalCount / limitNum),
+          has_next_page: pageNum < Math.ceil(result.totalCount / limitNum),
+          has_prev_page: pageNum > 1
+        },
+        workflow_id: workflow_id
+      }, 'Workflow leads retrieved successfully');
+
+    } catch (error) {
+      req.log.error(error, 'Failed to get workflow leads');
+      return responseHandler.error(res, error.message, 500);
+    }
+  }
+
+  /**
+   * Get lead persons for a specific lead
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
+   */
+  async getLeadPersons(req, res, next) {
+    try {
+      const { lead_id } = req.params;
+      const organisationId = req.user.organisation_id;
+      
+      // Check if user has an organisation
+      if (!organisationId) {
+        return responseHandler.error(res, 'User must be associated with an organisation to view lead persons', 400);
+      }
+
+      // Validate lead_id
+      if (!lead_id) {
+        return responseHandler.error(res, 'lead_id is required', 400);
+      }
+
+      // Get lead persons
+      const leadPersons = await workflowRepository.findLeadPersons(lead_id, organisationId);
+
+      logger.info({ 
+        lead_id,
+        organisation_id: organisationId,
+        user_id: req.user.user_id,
+        persons_count: leadPersons.length
+      }, 'Lead persons retrieved successfully');
+
+      return responseHandler.success(res, {
+        lead_id: lead_id,
+        persons: leadPersons
+      }, 'Lead persons retrieved successfully');
+
+    } catch (error) {
+      req.log.error(error, 'Failed to get lead persons');
+      return responseHandler.error(res, error.message, 500);
+    }
+  }
+
+  /**
+   * Verify/unverify a lead person
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next function
+   */
+  async verifyLeadPerson(req, res, next) {
+    try {
+      const { person_id } = req.params;
+      const { is_verified } = req.body;
+      const organisationId = req.user.organisation_id;
+      
+      // Check if user has an organisation
+      if (!organisationId) {
+        return responseHandler.error(res, 'User must be associated with an organisation to verify lead persons', 400);
+      }
+
+      // Validate person_id
+      if (!person_id) {
+        return responseHandler.error(res, 'person_id is required', 400);
+      }
+
+      // Validate is_verified
+      if (typeof is_verified !== 'boolean') {
+        return responseHandler.error(res, 'is_verified must be a boolean value', 400);
+      }
+
+      // Verify the lead person
+      const updatedPerson = await workflowRepository.verifyLeadPerson(person_id, is_verified, organisationId);
+
+      if (!updatedPerson) {
+        return responseHandler.error(res, 'Lead person not found or does not belong to your organisation', 404);
+      }
+
+      logger.info({ 
+        person_id,
+        is_verified,
+        organisation_id: organisationId,
+        user_id: req.user.user_id
+      }, 'Lead person verification status updated successfully');
+
+      return responseHandler.success(res, {
+        person_id: person_id,
+        is_verified: updatedPerson.is_verified,
+        message: `Lead person ${is_verified ? 'verified' : 'unverified'} successfully`
+      }, 'Lead person verification status updated successfully');
+
+    } catch (error) {
+      req.log.error(error, 'Failed to verify lead person');
+      return responseHandler.error(res, error.message, 500);
+    }
+  }
 }
 
 module.exports = new WorkflowController();

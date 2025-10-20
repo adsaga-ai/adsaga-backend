@@ -1,26 +1,16 @@
-const Consumer = require('../utils/agenda/agenda-consumer');
+const RedisConsumer = require('../utils/redis/redis-consumer');
 const leadDiscoveryHandler = require('./handlers/lead-discovery-handler');
 const config = require('../config');
 
-const consumer = new Consumer({
-  agenda: {
-    db: {
-      address: config.mongodb.uri,
-      collection: 'agenda-jobs',
-      options: {
-        connectTimeoutMS: 30000,
-        socketTimeoutMS: 30000,
-        maxPoolSize: 10,
-        serverSelectionTimeoutMS: 5000,
-        heartbeatFrequencyMS: 10000
-      }
-    }
-  }
+const consumer = new RedisConsumer({
+  redis: config.redis,
+  jobChannel: 'job_queue',
+  defaultConcurrency: 3
 });
 
 async function initiateConsumers() {
   try {
-    console.log('Initializing consumer...');
+    console.log('Initializing Redis consumer...');
     await consumer.initialize();
 
     console.log('Defining lead_discovery_handler job...');
@@ -29,13 +19,12 @@ async function initiateConsumers() {
 
     consumer.defineJob('lead_discovery_handler', {
       concurrency: 3,
-      priority: 'normal',
-      lockLifetime: 30 * 60 * 1000
+      priority: 'normal'
     }, leadDiscoveryHandler);
 
-    console.log('All consumers initialized successfully');
+    console.log('All Redis consumers initialized successfully');
   } catch (error) {
-    console.error('Failed to initialize consumers:', error);
+    console.error('Failed to initialize Redis consumers:', error);
     throw error;
   }
 }

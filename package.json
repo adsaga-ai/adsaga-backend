@@ -12,7 +12,6 @@
     "migrate": "npx sequelize-cli db:migrate --env development"
   },
   "dependencies": {
-    "@hokify/agenda": "^6.3.0",
     "@sendgrid/mail": "^8.1.6",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
@@ -25,6 +24,7 @@
     "pg": "^8.16.3",
     "pino": "^8.16.2",
     "pino-pretty": "^10.2.3",
+    "redis": "^4.6.12",
     "sequelize": "^6.37.7"
   },
   "devDependencies": {

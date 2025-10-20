@@ -154,6 +154,48 @@ const userValidation = {
         'any.required': 'Email is required'
       })
     })
+  },
+
+  // Organisation invites
+  createInvite: {
+    body: Joi.object({
+      email: Joi.string().email().max(255).required().messages({
+        'string.email': 'Please provide a valid email address',
+        'string.max': 'Email must not exceed 255 characters',
+        'any.required': 'Email is required'
+      })
+    })
+  },
+
+  revokeInvite: {
+    params: Joi.object({
+      invite_id: Joi.string().uuid().required().messages({
+        'string.guid': 'Invite ID must be a valid UUID',
+        'any.required': 'Invite ID is required'
+      })
+    })
+  },
+
+  acceptInvite: {
+    body: Joi.object({
+      token: Joi.string().required().messages({
+        'any.required': 'Invite token is required'
+      }),
+      fullname: Joi.string().min(2).max(50).required().messages({
+        'string.min': 'Full name must be at least 2 characters long',
+        'string.max': 'Full name must not exceed 50 characters',
+        'any.required': 'Full name is required'
+      }),
+      password: Joi.string().min(6).max(255).required().messages({
+        'string.min': 'Password must be at least 6 characters long',
+        'string.max': 'Password must not exceed 255 characters',
+        'any.required': 'Password is required'
+      }),
+      confirmPassword: Joi.string().valid(Joi.ref('password')).required().messages({
+        'any.only': 'Confirm password must match password',
+        'any.required': 'Confirm password is required'
+      })
+    })
   }
 };
 

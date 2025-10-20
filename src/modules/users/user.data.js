@@ -148,7 +148,7 @@ class UserRepository {
     }
   }
 
-  async update(userId, updateData, organisationId) {
+  async update(userId, updateData, organisationId = null) {
     try {
       const { fullname, email, password, organisation_id } = updateData;
       
@@ -175,7 +175,7 @@ class UserRepository {
         paramCount++;
       }
       
-      if (organisation_id !== undefined) {
+      if (organisation_id) {
         query += `, organisation_id = $${paramCount}`;
         values.push(organisation_id);
         paramCount++;
@@ -183,6 +183,49 @@ class UserRepository {
       
       query += ` WHERE user_id = $${paramCount} AND organisation_id = $${paramCount + 1} RETURNING user_id, organisation_id, fullname, email, created_at, updated_at`;
       values.push(userId, organisationId);
+      
+      const result = await pool.query(query, values);
+      return result.rows[0] || null;
+    } catch (error) {
+      throw new Error(`Failed to update user: ${error.message}`);
+    }
+  }
+
+  async updateWithoutOrganisationId(userId, updateData) {
+    try {
+      const { fullname, email, password, organisation_id } = updateData;
+      
+      let query = 'UPDATE "user" SET updated_at = NOW()';
+      const values = [];
+      let paramCount = 1;
+      
+      if (fullname) {
+        query += `, fullname = $${paramCount}`;
+        values.push(fullname);
+        paramCount++;
+      }
+      
+      if (email) {
+        query += `, email = $${paramCount}`;
+        values.push(email);
+        paramCount++;
+      }
+      
+      if (password) {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        query += `, password = $${paramCount}`;
+        values.push(hashedPassword);
+        paramCount++;
+      }
+      
+      if (organisation_id) {
+        query += `, organisation_id = $${paramCount}`;
+        values.push(organisation_id);
+        paramCount++;
+      }
+      
+      query += ` WHERE user_id = $${paramCount} RETURNING user_id, organisation_id, fullname, email, created_at, updated_at`;
+      values.push(userId);
       
       const result = await pool.query(query, values);
       return result.rows[0] || null;
