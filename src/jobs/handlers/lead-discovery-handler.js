@@ -1,4 +1,5 @@
 const workflowConfigRepository = require('../../modules/workflow-config/workflow-config.data');
+const organisationCreditBalanceRepository = require('../../modules/organisation-credit-balance/organisation-credit-balance.data');
 const workflowRepository = require('../../modules/workflow/workflow.data');
 const leadDiscoveryCall = require('../../external-calls/lead-discovery-call');
 const pool = require('../../config/database-connection');
@@ -26,6 +27,7 @@ const logger = pino({
  */
 async function leadDiscoveryHandler(data, job) {
   const { workflow_config_id, workflow_id, organisation_id } = data;
+  const llm_type = "GEMINI";
   
   if (!workflow_config_id) {
     throw new Error('workflow_config_id is required');
@@ -47,6 +49,11 @@ async function leadDiscoveryHandler(data, job) {
     
     if (!workflowConfig) {
       throw new Error(`Workflow config not found: ${workflow_config_id} for organisation: ${organisation_id}`);
+    }
+
+    let currentBalance = await organisationCreditBalanceRepository.findByOrganisationId(organisation_id);
+    if (!currentBalance || currentBalance.credit_balance <= 0) {
+      throw new Error(`No credit balance found for this organisation: ${organisation_id}`);
     }
 
     logger.info({ 
@@ -85,10 +92,14 @@ async function leadDiscoveryHandler(data, job) {
       company_name: workflowConfig.company_name || null,
       company_website: workflowConfig.company_website || null,
       custom_instructions: workflowConfig.custom_instructions || [],
+      llm_type: llm_type,
       auth_token: process.env.AGENT_API_AUTH_TOKEN || 'default-token' // You may want to get this from user context
     };
 
     const leadDiscoveryResult = await leadDiscoveryCall(leadDiscoveryParams);
+
+    currentBalance = await organisationCreditBalanceRepository.findByOrganisationId(organisation_id);
+    const updatedCreditBalance = currentBalance.credit_balance - leadDiscoveryResult?.leads?.length || 0;
     
     logger.info({ 
       workflow_id,

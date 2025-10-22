@@ -133,6 +133,70 @@ class OrganisationController {
     }
   }
 
+  async patchOrganisation(req, res, next) {
+    try {
+      const { organisation_id } = req.params;
+      const { organisation_name, website, subscription_code, locations } = req.body;
+      
+      // Check if organisation exists
+      const existingOrganisation = await organisationRepository.findById(organisation_id);
+      if (!existingOrganisation) {
+        return responseHandler.error(res, 'Organisation not found', 404);
+      }
+      
+      // Prepare partial update data
+      const updateData = {};
+      if (organisation_name !== undefined) {
+        updateData.organisationName = organisation_name;
+      }
+      if (website !== undefined) {
+        updateData.website = website || null;
+      }
+      if (subscription_code !== undefined) {
+        updateData.subscriptionCode = subscription_code;
+      }
+      
+      // Update organisation with only provided fields
+      const updatedOrganisation = await organisationRepository.partialUpdate(organisation_id, updateData);
+      
+      // Handle locations update if provided
+      let updatedLocations = existingOrganisation.locations || [];
+      if (locations !== undefined) {
+        if (locations.length > 0) {
+          // Delete existing locations
+          await organisationLocationRepository.deleteByOrganisationId(organisation_id);
+          
+          // Create new locations
+          const locationsData = locations.map(location => ({
+            locationId: crypto.randomUUID(),
+            organisationId: organisation_id,
+            address: location.address,
+            city: location.city,
+            state: location.state,
+            country: location.country
+          }));
+          
+          updatedLocations = await organisationLocationRepository.createMultiple(locationsData);
+        } else {
+          // If empty array provided, delete all locations
+          await organisationLocationRepository.deleteByOrganisationId(organisation_id);
+          updatedLocations = [];
+        }
+      }
+      
+      // Return organisation with locations
+      const result = {
+        ...updatedOrganisation,
+        locations: updatedLocations
+      };
+      
+      return responseHandler.success(res, result, 'Organisation updated successfully');
+    } catch (error) {
+      req.log.error(error, 'Failed to partially update organisation');
+      return responseHandler.error(res, error.message, 500);
+    }
+  }
+
   async deleteOrganisation(req, res, next) {
     try {
       const { organisation_id } = req.params;

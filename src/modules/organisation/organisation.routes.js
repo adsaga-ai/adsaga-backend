@@ -33,6 +33,14 @@ router.put(
   organisationController.updateOrganisation
 );
 
+// Partial update organisation (protected route)
+router.patch(
+  '/:organisation_id',
+  auth,
+  validate(organisationValidation.patch),
+  organisationController.patchOrganisation
+);
+
 // Delete organisation (protected route)
 router.delete(
   '/:organisation_id',

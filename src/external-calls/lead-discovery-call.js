@@ -14,6 +14,7 @@ const config = require('../config/development');
  * @param {string} params.company_website - Company website URL
  * @param {Array} params.custom_instructions - Array of custom instructions for lead generation
  * @param {string} params.auth_token - Authentication token for the API
+ * @param {string} params.llm_type - LLM type to use for lead generation
  * @returns {Promise<Object>} Response from the lead generation API
  */
 async function leadDiscoveryCall(params) {
@@ -27,7 +28,8 @@ async function leadDiscoveryCall(params) {
         company_name = null,
         company_website = null,
         custom_instructions = [],
-        auth_token 
+        auth_token,
+        llm_type = "GEMINI"
     } = params;
     
     try {
@@ -47,7 +49,8 @@ async function leadDiscoveryCall(params) {
                 lead_count,
                 company_name,
                 company_website,
-                custom_instructions
+                custom_instructions,
+                llm_type
             }
         });
         

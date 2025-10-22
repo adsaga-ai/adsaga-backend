@@ -3,6 +3,7 @@ module.exports = {
     logLevel: 'info',
     jwt: {
         secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+        adminSecret: process.env.ADMIN_JWT_SECRET || 'your-admin-secret-key-change-in-production',
         expiresIn: '24h',
         cookieName: 'auth_token'
     },

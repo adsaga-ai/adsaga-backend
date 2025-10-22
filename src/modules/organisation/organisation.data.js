@@ -103,6 +103,53 @@ class OrganisationRepository {
     }
   }
 
+  async partialUpdate(organisationId, organisationData) {
+    try {
+      // Build dynamic query based on provided fields
+      const fields = [];
+      const values = [];
+      let paramCount = 1;
+
+      if (organisationData.organisationName !== undefined) {
+        fields.push(`organisation_name = $${paramCount}`);
+        values.push(organisationData.organisationName);
+        paramCount++;
+      }
+
+      if (organisationData.website !== undefined) {
+        fields.push(`website = $${paramCount}`);
+        values.push(organisationData.website);
+        paramCount++;
+      }
+
+      if (organisationData.subscriptionCode !== undefined) {
+        fields.push(`subscription_code = $${paramCount}`);
+        values.push(organisationData.subscriptionCode);
+        paramCount++;
+      }
+
+      if (fields.length === 0) {
+        throw new Error('No fields provided for update');
+      }
+
+      // Add updated_at and organisation_id
+      fields.push(`updated_at = NOW()`);
+      values.push(organisationId);
+
+      const query = `
+        UPDATE organisation 
+        SET ${fields.join(', ')}
+        WHERE organisation_id = $${paramCount}
+        RETURNING *
+      `;
+
+      const result = await pool.query(query, values);
+      return result.rows[0] || null;
+    } catch (error) {
+      throw new Error(`Failed to partially update organisation: ${error.message}`);
+    }
+  }
+
   async delete(organisationId) {
     try {
       const query = 'DELETE FROM organisation WHERE organisation_id = $1 RETURNING *';
