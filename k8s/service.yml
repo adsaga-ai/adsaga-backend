@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: adsaga-server-service
+  namespace: default
+spec:
+  type: LoadBalancer
+  selector:
+    app: adsaga-server
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+    nodePort: 30080

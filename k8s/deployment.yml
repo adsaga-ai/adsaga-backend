@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adsaga-server
+  namespace: default
+  labels:
+    app: adsaga-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: adsaga-server
+  template:
+    metadata:
+      labels:
+        app: adsaga-server
+    spec:
+      containers:
+      - name: adsaga-server
+        image: adsaga/adsaga-server:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        envFrom:
+        - secretRef:
+            name: adsaga-server-secrets
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
