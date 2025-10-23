@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/app.js",
     "dev": "nodemon src/app.js | pino-pretty --config .pino-prettyrc",
+    "prod": "node src/app.js",
     "dev:pretty": "nodemon src/app.js | pino-pretty --config .pino-prettyrc",
     "start:pretty": "node src/app.js | pino-pretty --config .pino-prettyrc",
     "test": "echo \"Error: no test specified\" && exit 1",
