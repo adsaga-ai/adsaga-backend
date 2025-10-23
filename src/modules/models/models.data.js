@@ -20,9 +20,7 @@ class ModelRepository {
           input_tokens_per_dollar, 
           output_tokens_per_dollar, 
           input_credits_per_token, 
-          output_credits_per_token,
-          created_at,
-          updated_at
+          output_credits_per_token
         )
         VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING 
@@ -32,9 +30,7 @@ class ModelRepository {
           input_tokens_per_dollar,
           output_tokens_per_dollar,
           input_credits_per_token,
-          output_credits_per_token,
-          created_at,
-          updated_at
+          output_credits_per_token
       `;
       
       const result = await pool.query(query, [
