@@ -23,7 +23,7 @@ console.log(`PostgreSQL Config ${JSON.stringify(config.postgresConfig, null, 2)}
 pool.on('error', (err) => {
     console.log(`Error with PostgreSQL Config ${JSON.stringify(config.postgresConfig, null, 2)}`)
     console.error('Unexpected error on idle client', err);
-    process.exit(-1);
+    // process.exit(-1);
 });
 
 pool.connect()
@@ -34,7 +34,7 @@ pool.connect()
     .catch(err => {
         console.log(`Error connecting to PostgreSQL database with config ${JSON.stringify(config.postgresConfig, null, 2)}`)
         console.error('Error connecting to PostgreSQL database:', err);
-        process.exit(-1);
+        // process.exit(-1);
     });
 
 // Query wrapper with enhanced logging
