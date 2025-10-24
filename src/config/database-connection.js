@@ -10,9 +10,7 @@ const pool = new Pool({
     max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,
-    ssl: {
-        rejectUnauthorized: false
-    },
+    ssl: false,
     // Remove the log function to avoid connection pool noise
     statement_timeout: 0,
     query_timeout: 0,
